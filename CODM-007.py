@@ -1,39 +1,77 @@
 import os
 import subprocess
+import shutil
+
+# Global variables
+backup_dir = "backups"
+current_mod = None
 
 def extract_game_files(apk_path, extraction_path):
     # Use APKTool or other extraction tools to extract game files
     subprocess.run(["apktool", "d", apk_path, "-o", extraction_path])
 
-def upload_assets(extraction_path, custom_assets_path):
-    # Copy your custom assets to the appropriate directories in the extracted files
-    # You may need to replace or modify existing game assets
+def backup_game_files(extraction_path):
+    # Create a backup of the current mod
+    global current_mod
+    if current_mod:
+        shutil.copytree(extraction_path, os.path.join(backup_dir, current_mod))
+        print(f"Backup created for mod: {current_mod}")
 
-def test_game():
-    # Launch the game with your modifications for testing
-    subprocess.run(["am", "start", "-n", "com.activision.callofduty.shooter/com.unity3d.player.UnityPlayerActivity"])
+def restore_game_files(extraction_path):
+    # Restore the selected mod
+    global current_mod
+    mod_name = input("Enter the name of the mod to restore: ")
+    if os.path.exists(os.path.join(backup_dir, mod_name)):
+        shutil.rmtree(extraction_path)
+        shutil.copytree(os.path.join(backup_dir, mod_name), extraction_path)
+        current_mod = mod_name
+        print(f"Restored mod: {mod_name}")
+    else:
+        print(f"Mod '{mod_name}' not found in backups.")
 
-def package_back_to_apk(extraction_path, modified_apk_path):
-    # Repackage the modified game files into a new APK
-    subprocess.run(["apktool", "b", extraction_path, "-o", modified_apk_path])
+def manage_mods(extraction_path):
+    global current_mod
+    print("Available Mods:")
+    mods = os.listdir(backup_dir)
+    for i, mod in enumerate(mods):
+        print(f"{i + 1}. {mod}")
 
-def install_apk(apk_path):
-    # Install the modified APK on the device
-    subprocess.run(["pm", "install", "-r", apk_path])
+    choice = input("Enter the number of the mod to activate or 'c' to cancel: ")
+    if choice == 'c':
+        return
+    try:
+        choice = int(choice) - 1
+        if 0 <= choice < len(mods):
+            current_mod = mods[choice]
+            shutil.rmtree(extraction_path)
+            shutil.copytree(os.path.join(backup_dir, current_mod), extraction_path)
+            print(f"Activated mod: {current_mod}")
+        else:
+            print("Invalid choice.")
+    except ValueError:
+        print("Invalid input.")
 
-def uninstall_apk(package_name):
-    # Uninstall the original CODM APK
-    subprocess.run(["pm", "uninstall", package_name])
+def preview_assets(custom_assets_path):
+    # Implement asset preview here
+    pass
+
+# ... Other functions ...
 
 if __name__ == "__main__":
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+
     while True:
         print("CODM-007 Tool Menu:")
         print("1. Extract Game Files From APK")
-        print("2. Upload Assets To APK")
-        print("3. Test")
-        print("4. Package Everything Back Into APK")
-        print("5. Uninstall/Install APK")
-        print("6. Exit")
+        print("2. Backup Game Files")
+        print("3. Restore Game Files")
+        print("4. Manage Mods")
+        print("5. Preview Assets")
+        print("6. Test")
+        print("7. Package Everything Back Into APK")
+        print("8. Uninstall/Install APK")
+        print("9. Exit")
 
         choice = input("Enter your choice: ")
 
@@ -43,20 +81,28 @@ if __name__ == "__main__":
             extract_game_files(apk_path, extraction_path)
         elif choice == "2":
             extraction_path = input("Enter the extraction directory: ")
-            custom_assets_path = input("Enter the path to your custom assets: ")
-            upload_assets(extraction_path, custom_assets_path)
+            backup_game_files(extraction_path)
         elif choice == "3":
-            test_game()
+            extraction_path = input("Enter the extraction directory: ")
+            restore_game_files(extraction_path)
         elif choice == "4":
+            extraction_path = input("Enter the extraction directory: ")
+            manage_mods(extraction_path)
+        elif choice == "5":
+            custom_assets_path = input("Enter the path to your custom assets: ")
+            preview_assets(custom_assets_path)
+        elif choice == "6":
+            test_game()
+        elif choice == "7":
             extraction_path = input("Enter the extraction directory: ")
             modified_apk_path = input("Enter the path for the modified APK: ")
             package_back_to_apk(extraction_path, modified_apk_path)
-        elif choice == "5":
+        elif choice == "8":
             package_name = input("Enter the package name (com.example.app): ")
             uninstall_apk(package_name)
             modified_apk_path = input("Enter the path to the modified APK: ")
             install_apk(modified_apk_path)
-        elif choice == "6":
+        elif choice == "9":
             break
         else:
             print("Invalid choice. Please select a valid option.")
